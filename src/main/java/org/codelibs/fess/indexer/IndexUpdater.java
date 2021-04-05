@@ -24,6 +24,8 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 
+import com.github.openjson.JSONObject;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.codelibs.core.lang.StringUtil;
@@ -60,6 +62,18 @@ import org.codelibs.fess.util.ComponentUtil;
 import org.codelibs.fess.util.DocList;
 import org.codelibs.fess.util.MemoryUtil;
 import org.codelibs.fess.util.ThreadDumpUtil;
+
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import org.openqa.selenium.By;
+import org.openqa.selenium.UnexpectedAlertBehaviour;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeDriverService;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 public class IndexUpdater extends Thread {
     private static final Logger logger = LogManager.getLogger(IndexUpdater.class);
@@ -350,15 +364,43 @@ public class IndexUpdater extends Thread {
                         continue;
                     }
                     @SuppressWarnings("unchecked")
+                    //original
                     final Map<String, Object> map = (Map<String, Object>) transformer.getData(accessResultData);
+
+                    // BEGIN OF CUSTOMIZED for dynamic webpages with javascript
+                    logger.info("Starting Webdriver . . .");
+                    final String driverPath = "/Users/lucasdealmeida/Documents/projects/fess-bb/chrome-webdriver/chromedriver";
+                    // final WebDriverClientJS scraper = new WebDriverClientJS();
+                    java.util.logging.Logger.getLogger("org.openqa.selenium").setLevel(Level.OFF);
+                    // set the system property for Chrome driver      
+                    System.setProperty("webdriver.chrome.driver", driverPath);
+                    System.setProperty("webdriver.chrome.silentOutput", "true");
+                    ChromeOptions chromeOptions = new ChromeOptions();
+                    // chromeOptions.setBinary("/usr/bin/chromium");
+                    chromeOptions.addArguments("--headless");
+                    chromeOptions.addArguments("--silent");
+                    chromeOptions.setCapability(CapabilityType.UNEXPECTED_ALERT_BEHAVIOUR, UnexpectedAlertBehaviour.IGNORE);
+                    final WebDriver driver = new ChromeDriver(chromeOptions);
+                    driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+                    driver.manage().window().maximize();
+                    logger.info("Getting data from webdriver . . .");
+                    driver.get(accessResult.getUrl());
+                    final Object content = new String((driver.getCurrentUrl().toString() + "\n"
+                            + driver.getTitle().toString() + "\n" + driver.findElement(By.tagName("body")).getText().toString()));
+                    driver.quit();
+                    logger.info("Now will try to save data from webdriver to document . . .");                   
+                    map.remove("content");
+                    map.put("content", content);
+                    // END OF CUSTOMIZED for dynamic webpages with javascript
+
                     if (map.isEmpty()) {
                         // no transformer
                         logger.warn("No data: {}", accessResult.getUrl());
                         continue;
                     } else {
-                        logger.warn("\n\n\n");
-                        logger.warn(map.toString());
-                        logger.warn("\n\n\n");
+                        logger.info("\n\n\n");
+                        logger.info(map.get("content").toString());
+                        logger.info("\n\n\n");
                     }
 
                     if (Constants.FALSE.equals(map.get(Constants.INDEXING_TARGET))) {
