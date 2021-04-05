@@ -1389,6 +1389,13 @@
 			<version>2.33</version>
 		</dependency>
 
+		<!-- webdriver -->
+		<dependency>
+			<groupId>org.codelibs.fess</groupId>
+			<artifactId>fess-crawler-webdriver</artifactId>
+			<version>${crawler.version}</version>
+		</dependency>
+
 		<!-- json -->
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
