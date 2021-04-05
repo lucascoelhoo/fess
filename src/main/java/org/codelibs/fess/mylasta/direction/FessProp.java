@@ -36,6 +36,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -52,6 +53,7 @@ import org.codelibs.fesen.search.sort.SortBuilder;
 import org.codelibs.fesen.search.sort.SortBuilders;
 import org.codelibs.fesen.search.sort.SortOrder;
 import org.codelibs.fess.Constants;
+import org.codelibs.fess.exception.FessSystemException;
 import org.codelibs.fess.helper.PermissionHelper;
 import org.codelibs.fess.mylasta.action.FessUserBean;
 import org.codelibs.fess.taglib.FessFunctions;
@@ -338,7 +340,6 @@ public interface FessProp {
     default boolean isResultCollapsed() {
         switch (getFesenType()) {
         case Constants.FESEN_TYPE_CLOUD:
-        case Constants.FESEN_TYPE_AWS:
             return false;
         default:
             return getSystemPropertyAsBoolean(Constants.RESULT_COLLAPSED_PROPERTY, false);
@@ -757,7 +758,28 @@ public interface FessProp {
     default PrunedTag[] getCrawlerDocumentHtmlPrunedTagsAsArray() {
         PrunedTag[] tags = (PrunedTag[]) propMap.get("crawlerDocumentHtmlPrunedTags");
         if (tags == null) {
-            tags = PrunedTag.parse(getCrawlerDocumentHtmlPrunedTags());
+            tags = split(getCrawlerDocumentHtmlPrunedTags(), ",").get(stream -> stream.filter(StringUtil::isNotBlank).map(v -> {
+                final Pattern pattern = Pattern.compile("(\\w+)(\\[[^\\]]+\\])?(\\.\\w+)?(#\\w+)?");
+                final Matcher matcher = pattern.matcher(v.trim());
+                if (matcher.matches()) {
+                    final PrunedTag tag = new PrunedTag(matcher.group(1));
+                    if (matcher.group(2) != null) {
+                        final String attrPair = matcher.group(2).substring(1, matcher.group(2).length() - 1);
+                        final Matcher equalMatcher = Pattern.compile("([\\w\\-]+)=(\\S+)").matcher(attrPair);
+                        if (equalMatcher.matches()) {
+                            tag.setAttr(equalMatcher.group(1), equalMatcher.group(2));
+                        }
+                    }
+                    if (matcher.group(3) != null) {
+                        tag.setCss(matcher.group(3).substring(1));
+                    }
+                    if (matcher.group(4) != null) {
+                        tag.setId(matcher.group(4).substring(1));
+                    }
+                    return tag;
+                }
+                throw new FessSystemException("Invalid pruned tag: " + v);
+            }).toArray(n -> new PrunedTag[n]));
             propMap.put("crawlerDocumentHtmlPrunedTags", tags);
         }
         return tags;

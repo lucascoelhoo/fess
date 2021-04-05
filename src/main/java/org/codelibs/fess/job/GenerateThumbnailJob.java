@@ -161,8 +161,6 @@ public class GenerateThumbnailJob extends ExecJob {
             cmdList.add("-Dlasta.env=" + getExecuteType());
         }
 
-        addFessConfigProperties(cmdList);
-        addFessSystemProperties(cmdList);
         addSystemProperty(cmdList, Constants.FESS_CONF_PATH, null, null);
         cmdList.add("-Dfess." + getExecuteType() + ".process=true");
         if (logFilePath == null) {

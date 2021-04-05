@@ -101,7 +101,7 @@ public class UserInfoHelper {
     public void deleteUserCodeFromCookie(final HttpServletRequest request) {
         final String cookieValue = getUserCodeFromCookie(request);
         if (cookieValue != null) {
-            updateCookie(StringUtil.EMPTY, 0);
+            updateCookie(cookieValue, 0);
         }
     }
 

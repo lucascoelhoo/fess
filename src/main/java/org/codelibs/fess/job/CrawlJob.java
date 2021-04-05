@@ -264,8 +264,6 @@ public class CrawlJob extends ExecJob {
             cmdList.add("-Dlasta.env=" + getExecuteType());
         }
 
-        addFessConfigProperties(cmdList);
-        addFessSystemProperties(cmdList);
         addSystemProperty(cmdList, Constants.FESS_CONF_PATH, null, null);
         cmdList.add("-Dfess." + getExecuteType() + ".process=true");
         cmdList.add("-Dfess.log.path=" + (logFilePath != null ? logFilePath : systemHelper.getLogFilePath()));

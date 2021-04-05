@@ -1,0 +1,42 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch Current File",
+            "request": "launch",
+            "mainClass": "${file}"
+        },
+        {
+            "type": "java",
+            "name": "Launch FessBoot",
+            "request": "launch",
+            "mainClass": "org.codelibs.fess.FessBoot",
+            "projectName": "fess"
+        },
+        {
+            "type": "java",
+            "name": "Launch Crawler",
+            "request": "launch",
+            "mainClass": "org.codelibs.fess.exec.Crawler",
+            "projectName": "fess"
+        },
+        {
+            "type": "java",
+            "name": "Launch SuggestCreator",
+            "request": "launch",
+            "mainClass": "org.codelibs.fess.exec.SuggestCreator",
+            "projectName": "fess"
+        },
+        {
+            "type": "java",
+            "name": "Launch ThumbnailGenerator",
+            "request": "launch",
+            "mainClass": "org.codelibs.fess.exec.ThumbnailGenerator",
+            "projectName": "fess"
+        }
+    ]
+}

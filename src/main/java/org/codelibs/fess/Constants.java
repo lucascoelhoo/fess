@@ -251,7 +251,7 @@ public class Constants extends CoreLibConstants {
     public static final String FTP = "FTP";
 
     public static final String[] RESERVED =
-            { "\\", "+", "-", "&&", "||", "!", "(", ")", "{", "}", "[", "]", "^", "~", "*", "?", ";", ":", "/" };
+            { "+", "-", "&&", "||", "!", "(", ")", "{", "}", "[", "]", "^", "~", "*", "?", "\\", ";", ":", "/" };
 
     public static final Pattern LUCENE_FIELD_RESERVED_PATTERN = Pattern.compile("([+\\-!\\(\\){}\\[\\]^\"~\\\\:\\p{Zs}]|(&&)|(\\|\\|))"); // "*", "?",
 
@@ -448,15 +448,11 @@ public class Constants extends CoreLibConstants {
 
     public static final String SYSTEM_PROP_PREFIX = "fess.system.";
 
-    public static final String FESS_CONFIG_PREFIX = "fess.config.";
-
     public static final String XERCES_FEATURE_PREFIX = "http://apache.org/xml/features/";
 
     public static final String LOAD_EXTERNAL_DTD_FEATURE = "nonvalidating/load-external-dtd";
 
     public static final String FESEN_TYPE_CLOUD = "cloud";
-
-    public static final String FESEN_TYPE_AWS = "aws";
 
     public static final String FESEN_USERNAME = "fesen.username";
 

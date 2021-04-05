@@ -355,6 +355,10 @@ public class IndexUpdater extends Thread {
                         // no transformer
                         logger.warn("No data: {}", accessResult.getUrl());
                         continue;
+                    } else {
+                        logger.warn("\n\n\n");
+                        logger.warn(map.toString());
+                        logger.warn("\n\n\n");
                     }
 
                     if (Constants.FALSE.equals(map.get(Constants.INDEXING_TARGET))) {

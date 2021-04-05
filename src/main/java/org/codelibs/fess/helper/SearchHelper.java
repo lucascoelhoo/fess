@@ -49,7 +49,6 @@ import org.codelibs.fess.entity.SearchRequestParams;
 import org.codelibs.fess.entity.SearchRequestParams.SearchRequestType;
 import org.codelibs.fess.es.client.SearchEngineClient.SearchConditionBuilder;
 import org.codelibs.fess.es.client.SearchEngineClientException;
-import org.codelibs.fess.exception.InvalidQueryException;
 import org.codelibs.fess.mylasta.action.FessUserBean;
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.util.BooleanFunction;
@@ -82,18 +81,39 @@ public class SearchHelper {
             request.setAttribute(Constants.REQUEST_QUERIES, params.getQuery());
         });
 
-        String query = ComponentUtil.getQueryStringBuilder().params(params).sortField(params.getSort()).build();
-        List<Map<String, Object>> documentItems;
-        try {
-            documentItems = searchInternal(query, params, userBean);
-        } catch (final InvalidQueryException e) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("Invalid query: {}", query, e);
-            }
-            query = ComponentUtil.getQueryStringBuilder().params(params).sortField(params.getSort()).escape(true).build();
-            documentItems = searchInternal(query, params, userBean);
+        final int pageStart = params.getStartPosition();
+        final int pageSize = params.getPageSize();
+        final String sortField = params.getSort();
+        final String query;
+        if (StringUtil.isBlank(sortField)) {
+            query = ComponentUtil.getQueryStringBuilder().params(params).build();
+        } else {
+            query = ComponentUtil.getQueryStringBuilder().params(params).build() + " sort:" + sortField;
         }
-
+        final FessConfig fessConfig = ComponentUtil.getFessConfig();
+        final QueryHelper queryHelper = ComponentUtil.getQueryHelper();
+        final List<Map<String, Object>> documentItems =
+                ComponentUtil.getSearchEngineClient().search(fessConfig.getIndexDocumentSearchIndex(), searchRequestBuilder -> {
+                    queryHelper.processSearchPreference(searchRequestBuilder, userBean, query);
+                    return SearchConditionBuilder.builder(searchRequestBuilder).query(query).offset(pageStart).size(pageSize)
+                            .facetInfo(params.getFacetInfo()).geoInfo(params.getGeoInfo()).highlightInfo(params.getHighlightInfo())
+                            .similarDocHash(params.getSimilarDocHash()).responseFields(queryHelper.getResponseFields())
+                            .searchRequestType(params.getType()).trackTotalHits(params.getTrackTotalHits()).build();
+                }, (searchRequestBuilder, execTime, searchResponse) -> {
+                    searchResponse.ifPresent(r -> {
+                        if (r.getTotalShards() != r.getSuccessfulShards() && fessConfig.isQueryTimeoutLogging()) {
+                            // partial results
+                            final StringBuilder buf = new StringBuilder(1000);
+                            buf.append("[SEARCH TIMEOUT] {\"exec_time\":").append(execTime)//
+                                    .append(",\"request\":").append(searchRequestBuilder.toString())//
+                                    .append(",\"response\":").append(r.toString()).append('}');
+                            logger.warn(buf.toString());
+                        }
+                    });
+                    final QueryResponseList queryResponseList = ComponentUtil.getQueryResponseList();
+                    queryResponseList.init(searchResponse, pageStart, pageSize);
+                    return queryResponseList;
+                });
         data.setDocumentItems(documentItems);
 
         // search
@@ -122,7 +142,7 @@ public class SearchHelper {
         }
         data.setExecTime(execTime);
 
-        final String queryId = ComponentUtil.getQueryHelper().generateId();
+        final String queryId = queryHelper.generateId();
 
         data.setPageSize(queryResponseList.getPageSize());
         data.setCurrentPageNumber(queryResponseList.getCurrentPageNumber());
@@ -140,12 +160,10 @@ public class SearchHelper {
         data.setRequestedTime(requestedTime);
         data.setQueryId(queryId);
 
-        final FessConfig fessConfig = ComponentUtil.getFessConfig();
-
         // search log
         if (fessConfig.isSearchLog()) {
-            ComponentUtil.getSearchLogHelper().addSearchLog(params, DfTypeUtil.toLocalDateTime(requestedTime), queryId, query,
-                    params.getStartPosition(), params.getPageSize(), queryResponseList);
+            ComponentUtil.getSearchLogHelper().addSearchLog(params, DfTypeUtil.toLocalDateTime(requestedTime), queryId, query, pageStart,
+                    pageSize, queryResponseList);
         }
 
         // favorite
@@ -153,34 +171,6 @@ public class SearchHelper {
             ComponentUtil.getUserInfoHelper().storeQueryId(queryId, documentItems);
         }
 
-    }
-
-    protected List<Map<String, Object>> searchInternal(final String query, final SearchRequestParams params,
-            final OptionalThing<FessUserBean> userBean) {
-        final FessConfig fessConfig = ComponentUtil.getFessConfig();
-        final QueryHelper queryHelper = ComponentUtil.getQueryHelper();
-        return ComponentUtil.getSearchEngineClient().search(fessConfig.getIndexDocumentSearchIndex(), searchRequestBuilder -> {
-            queryHelper.processSearchPreference(searchRequestBuilder, userBean, query);
-            return SearchConditionBuilder.builder(searchRequestBuilder).query(query).offset(params.getStartPosition())
-                    .size(params.getPageSize()).facetInfo(params.getFacetInfo()).geoInfo(params.getGeoInfo())
-                    .highlightInfo(params.getHighlightInfo()).similarDocHash(params.getSimilarDocHash())
-                    .responseFields(queryHelper.getResponseFields()).searchRequestType(params.getType())
-                    .trackTotalHits(params.getTrackTotalHits()).build();
-        }, (searchRequestBuilder, execTime, searchResponse) -> {
-            searchResponse.ifPresent(r -> {
-                if (r.getTotalShards() != r.getSuccessfulShards() && fessConfig.isQueryTimeoutLogging()) {
-                    // partial results
-                    final StringBuilder buf = new StringBuilder(1000);
-                    buf.append("[SEARCH TIMEOUT] {\"exec_time\":").append(execTime)//
-                            .append(",\"request\":").append(searchRequestBuilder.toString())//
-                            .append(",\"response\":").append(r.toString()).append('}');
-                    logger.warn(buf.toString());
-                }
-            });
-            final QueryResponseList queryResponseList = ComponentUtil.getQueryResponseList();
-            queryResponseList.init(searchResponse, params.getStartPosition(), params.getPageSize());
-            return queryResponseList;
-        });
     }
 
     public long scrollSearch(final SearchRequestParams params, final BooleanFunction<Map<String, Object>> cursor,
@@ -191,7 +181,13 @@ public class SearchHelper {
         });
 
         final int pageSize = params.getPageSize();
-        final String query = ComponentUtil.getQueryStringBuilder().params(params).sortField(params.getSort()).build();
+        final String sortField = params.getSort();
+        final String query;
+        if (StringUtil.isBlank(sortField)) {
+            query = ComponentUtil.getQueryStringBuilder().params(params).build();
+        } else {
+            query = ComponentUtil.getQueryStringBuilder().params(params).build() + " sort:" + sortField;
+        }
         final FessConfig fessConfig = ComponentUtil.getFessConfig();
         return ComponentUtil.getSearchEngineClient().<Map<String, Object>> scrollSearch(fessConfig.getIndexDocumentSearchIndex(),
                 searchRequestBuilder -> {

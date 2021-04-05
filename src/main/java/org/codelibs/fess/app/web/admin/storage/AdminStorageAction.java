@@ -43,11 +43,13 @@ import org.lastaflute.web.ruts.multipart.MultipartFormFile;
 import org.lastaflute.web.ruts.process.ActionRuntime;
 import org.lastaflute.web.servlet.request.stream.WrittenStreamOut;
 
+import io.minio.ErrorCode;
 import io.minio.GetObjectArgs;
 import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.PutObjectOptions;
 import io.minio.RemoveObjectArgs;
 import io.minio.Result;
 import io.minio.errors.ErrorResponseException;
@@ -165,8 +167,10 @@ public class AdminStorageAction extends FessAdminAction {
         try (final InputStream in = uploadFile.getInputStream()) {
             final FessConfig fessConfig = ComponentUtil.getFessConfig();
             final MinioClient minioClient = createClient(fessConfig);
+            final PutObjectOptions options = new PutObjectOptions(uploadFile.getFileSize(), -1);
             final PutObjectArgs args = PutObjectArgs.builder().bucket(fessConfig.getStorageBucket()).object(objectName)
-                    .stream(in, uploadFile.getFileSize(), -1).contentType("application/octet-stream").build();
+                    .stream(in, options.objectSize(), options.partSize()).contentType(options.contentType()).headers(options.headers())
+                    .sse(options.sse()).build();
             minioClient.putObject(args);
         } catch (final Exception e) {
             throw new StorageException("Failed to upload " + objectName, e);
@@ -229,8 +233,8 @@ public class AdminStorageAction extends FessAdminAction {
                 }
             }
         } catch (final ErrorResponseException e) {
-            final String code = e.errorResponse().code();
-            if ("NoSuchBucket".equals(code)) {
+            final ErrorCode code = e.errorResponse().errorCode();
+            if (code == ErrorCode.NO_SUCH_BUCKET) {
                 final MinioClient minioClient = createClient(fessConfig);
                 try {
                     final MakeBucketArgs args = MakeBucketArgs.builder().bucket(fessConfig.getStorageBucket()).build();

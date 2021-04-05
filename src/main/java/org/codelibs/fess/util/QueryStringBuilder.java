@@ -22,7 +22,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.codelibs.core.lang.StringUtil;
-import org.codelibs.fess.Constants;
 import org.codelibs.fess.entity.SearchRequestParams;
 import org.codelibs.fess.helper.RelatedQueryHelper;
 import org.codelibs.fess.mylasta.direction.FessConfig;
@@ -37,28 +36,11 @@ public class QueryStringBuilder {
 
     private SearchRequestParams params;
 
-    private boolean escape = false;
-
-    private String sortField;
-
     protected String quote(final String value) {
         if (value.split("\\s").length > 1) {
             return new StringBuilder().append('"').append(value.replace('"', ' ')).append('"').toString();
         }
         return value;
-    }
-
-    protected String escapeQuery(final String value) {
-        if (!escape) {
-            return value;
-        }
-
-        String newValue = value;
-        for (int i = 0; i < Constants.RESERVED.length; i++) {
-            final String replacement = Constants.RESERVED[i].replaceAll("(.)", "\\\\$1");
-            newValue = newValue.replace(Constants.RESERVED[i], replacement);
-        }
-        return newValue;
     }
 
     public String build() {
@@ -68,7 +50,7 @@ public class QueryStringBuilder {
 
         final String query = buildBaseQuery();
         if (StringUtil.isNotBlank(query)) {
-            queryBuf.append(escapeQuery(query));
+            queryBuf.append(query);
         }
 
         stream(params.getExtraQueries())
@@ -98,11 +80,7 @@ public class QueryStringBuilder {
             }
         }));
 
-        String baseQuery = queryBuf.toString().trim();
-        if (StringUtil.isBlank(sortField)) {
-            return baseQuery;
-        }
-        return baseQuery + " sort:" + sortField;
+        return queryBuf.toString().trim();
     }
 
     protected void appendQuery(final StringBuilder queryBuf, final String query) {
@@ -203,16 +181,6 @@ public class QueryStringBuilder {
 
     public QueryStringBuilder params(final SearchRequestParams params) {
         this.params = params;
-        return this;
-    }
-
-    public QueryStringBuilder sortField(final String sortField) {
-        this.sortField = sortField;
-        return this;
-    }
-
-    public QueryStringBuilder escape(final boolean escape) {
-        this.escape = escape;
         return this;
     }
 }

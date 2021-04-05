@@ -248,7 +248,6 @@ public class SearchEngineClient implements Client {
             if (runner == null) {
                 switch (fessConfig.getFesenType()) {
                 case Constants.FESEN_TYPE_CLOUD:
-                case Constants.FESEN_TYPE_AWS:
                     httpAddress = org.codelibs.fess.util.ResourceUtil.getFesenHttpUrl();
                     break;
                 default:
@@ -401,7 +400,6 @@ public class SearchEngineClient implements Client {
         if (uploadConfig) {
             switch (fesenType) {
             case Constants.FESEN_TYPE_CLOUD:
-            case Constants.FESEN_TYPE_AWS:
                 // nothing
                 break;
             default:
@@ -413,7 +411,15 @@ public class SearchEngineClient implements Client {
 
         final String indexConfigFile = getResourcePath(indexConfigPath, fesenType, "/" + index + ".json");
         try {
-            final String source = readIndexSetting(fesenType, indexConfigFile, numberOfShards, autoExpandReplicas);
+            String source = FileUtil.readUTF8(indexConfigFile);
+            String dictionaryPath = System.getProperty("fess.dictionary.path", StringUtil.EMPTY);
+            if (StringUtil.isNotBlank(dictionaryPath) && !dictionaryPath.endsWith("/")) {
+                dictionaryPath = dictionaryPath + "/";
+            }
+            source = source.replaceAll(Pattern.quote("${fess.dictionary.path}"), dictionaryPath);
+            source = source.replaceAll(Pattern.quote("${fess.index.codec}"), fessConfig.getIndexCodec());
+            source = source.replaceAll(Pattern.quote("${fess.index.number_of_shards}"), numberOfShards);
+            source = source.replaceAll(Pattern.quote("${fess.index.auto_expand_replicas}"), autoExpandReplicas);
             final CreateIndexResponse indexResponse = client.admin().indices().prepareCreate(indexName).setSource(source, XContentType.JSON)
                     .execute().actionGet(fessConfig.getIndexIndicesTimeout());
             if (indexResponse.isAcknowledged()) {
@@ -427,21 +433,6 @@ public class SearchEngineClient implements Client {
         }
 
         return false;
-    }
-
-    protected String readIndexSetting(final String fesenType, final String indexConfigFile, final String numberOfShards,
-            final String autoExpandReplicas) {
-        final FessConfig fessConfig = ComponentUtil.getFessConfig();
-        String source = FileUtil.readUTF8(indexConfigFile);
-        String dictionaryPath = System.getProperty("fess.dictionary.path", StringUtil.EMPTY);
-        if (StringUtil.isNotBlank(dictionaryPath) && !dictionaryPath.endsWith("/")) {
-            dictionaryPath = dictionaryPath + "/";
-        }
-        source = source.replaceAll(Pattern.quote("${fess.dictionary.path}"), dictionaryPath);
-        source = source.replaceAll(Pattern.quote("${fess.index.codec}"), fessConfig.getIndexCodec());
-        source = source.replaceAll(Pattern.quote("${fess.index.number_of_shards}"), numberOfShards);
-        source = source.replaceAll(Pattern.quote("${fess.index.auto_expand_replicas}"), autoExpandReplicas);
-        return source;
     }
 
     protected String getResourcePath(final String basePath, final String type, final String path) {

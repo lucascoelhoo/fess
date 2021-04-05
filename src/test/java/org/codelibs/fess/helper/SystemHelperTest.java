@@ -15,9 +15,6 @@
  */
 package org.codelibs.fess.helper;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import org.codelibs.fess.mylasta.direction.FessConfig;
 import org.codelibs.fess.unit.UnitFessTestCase;
 import org.codelibs.fess.util.ComponentUtil;
@@ -25,8 +22,6 @@ import org.codelibs.fess.util.ComponentUtil;
 public class SystemHelperTest extends UnitFessTestCase {
 
     public SystemHelper systemHelper;
-
-    private Map<String, String> envMap = new HashMap<>();
 
     @Override
     public void setUp() throws Exception {
@@ -39,13 +34,7 @@ public class SystemHelperTest extends UnitFessTestCase {
             @Override
             public void updateSystemProperties() {
             }
-
-            @Override
-            protected Map<String, String> getEnvMap() {
-                return envMap;
-            }
         };
-        envMap.clear();
         systemHelper.init();
     }
 
@@ -128,23 +117,5 @@ public class SystemHelperTest extends UnitFessTestCase {
         assertEquals("aaa", systemHelper.normalizeConfigPath("regexp:aaa"));
         assertEquals("aaa", systemHelper.normalizeConfigPath("regexpCase:aaa"));
         assertEquals("(?i)aaa", systemHelper.normalizeConfigPath("regexpIgnoreCase:aaa"));
-    }
-
-    public void test_getFilteredEnvMap() {
-        Map<String, String> filteredEnvMap = systemHelper.getFilteredEnvMap("^FESS_ENV.*");
-        assertEquals(0, filteredEnvMap.size());
-
-        envMap.put("FESS_ENV_TEST", "123");
-        filteredEnvMap = systemHelper.getFilteredEnvMap("^FESS_ENV.*");
-        assertEquals(1, filteredEnvMap.size());
-        assertEquals("123", filteredEnvMap.get("FESS_ENV_TEST"));
-
-        filteredEnvMap = systemHelper.getFilteredEnvMap("^XFESS_ENV.*");
-        assertEquals(0, filteredEnvMap.size());
-
-        envMap.put("", "123");
-        filteredEnvMap = systemHelper.getFilteredEnvMap("^FESS_ENV.*");
-        assertEquals(1, filteredEnvMap.size());
-        assertEquals("123", filteredEnvMap.get("FESS_ENV_TEST"));
     }
 }

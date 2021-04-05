@@ -36,7 +36,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -45,7 +44,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
@@ -126,7 +124,7 @@ public class SystemHelper {
             logger.debug("Initialize {}", this.getClass().getSimpleName());
         }
         final Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
-        cal.set(2022, 9 - 1, 23); // EOL Date
+        cal.set(2022, 8 - 1, 10); // EOL Date
         eolTime = cal.getTimeInMillis();
         if (isEoled()) {
             logger.error("Your system is out of support. See https://fess.codelibs.org/eol.html");
@@ -400,7 +398,7 @@ public class SystemHelper {
     }
 
     public String getHostname() {
-        final Map<String, String> env = getEnvMap();
+        final Map<String, String> env = System.getenv();
         if (env.containsKey("COMPUTERNAME")) {
             return env.get("COMPUTERNAME");
         } else if (env.containsKey("HOSTNAME")) {
@@ -586,21 +584,6 @@ public class SystemHelper {
             }
         }
         return systemCpuPercent;
-    }
-
-    public Map<String, String> getFilteredEnvMap(final String keyPattern) {
-        final Pattern pattern = Pattern.compile(keyPattern);
-        return getEnvMap().entrySet().stream().filter(e -> {
-            String key = e.getKey();
-            if (StringUtil.isBlank(key)) {
-                return false;
-            }
-            return pattern.matcher(key).matches();
-        }).collect(Collectors.toMap(Entry<String, String>::getKey, Entry<String, String>::getValue));
-    }
-
-    protected Map<String, String> getEnvMap() {
-        return System.getenv();
     }
 
     public String getVersion() {
